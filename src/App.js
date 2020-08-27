@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useState } from 'react';
+import api from './services/api';
 
 import {
   SafeAreaView,
@@ -11,45 +12,90 @@ import {
 } from "react-native";
 
 export default function App() {
+  const [repositories, setRepositories] = useState([]);
+
+  useEffect(() => {
+    api.get('repositories').then(response => {
+      setRepositories(response.data);
+    })
+  }, [])
+
   async function handleLikeRepository(id) {
-    // Implement "Like Repository" functionality
+    const response = await api.post(`/repositories/${id}/like`)
+    const updatedRepo = response.data;
+
+    const repository = repositories.find(repo => repo.id === id);
+    if(repository){
+      const repositoryIndex = repositories.indexOf(repository);
+
+      repositories[repositoryIndex] = updatedRepo;
+      setRepositories([...repositories]);
+    }
+  }
+
+  async function handleAddRepository() {
+    const response = await api.post(`/repositories`, {
+      title: "Repositorio super foda com node",
+      url: "http://super-url.com",
+      techs: [
+        "React",
+        "node",
+        "Javacripto"
+      ]
+    })
+    const newRepo = response.data;
+
+    setRepositories([...repositories, newRepo])
   }
 
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#7159c1" />
       <SafeAreaView style={styles.container}>
-        <View style={styles.repositoryContainer}>
-          <Text style={styles.repository}>Repository 1</Text>
+        <>
+          <FlatList 
+            style={styles.repositoryContainer}
+            data={repositories}
+            keyExtractor={repo => repo.id}
+            extraData={repositories}
+            renderItem={({ item: repository }) => (
+              <>
+                <Text style={styles.repository}>{repository.title}</Text>
 
-          <View style={styles.techsContainer}>
-            <Text style={styles.tech}>
-              ReactJS
-            </Text>
-            <Text style={styles.tech}>
-              Node.js
-            </Text>
-          </View>
+                <View style={styles.techsContainer}>
+                  {repository.techs.map((tech, index) => (
+                    <Text key={index} style={styles.tech}>
+                      {tech}
+                    </Text>
+                  ))}
+                </View>
 
-          <View style={styles.likesContainer}>
-            <Text
-              style={styles.likeText}
-              // Remember to replace "1" below with repository ID: {`repository-likes-${repository.id}`}
-              testID={`repository-likes-1`}
-            >
-              3 curtidas
-            </Text>
-          </View>
+                <View style={styles.likesContainer}>
+                  <Text
+                    style={styles.likeText}
+                    testID={`repository-likes-${repository.id}`}
+                  >
+                    {repository.likes} curtidas
+                  </Text>
+                </View>
 
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => handleLikeRepository(repository.id)}
+                  testID={`like-button-${repository.id}`}
+                >
+                  <Text style={styles.buttonText}>Curtir</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          />
           <TouchableOpacity
-            style={styles.button}
-            onPress={() => handleLikeRepository(1)}
-            // Remember to replace "1" below with repository ID: {`like-button-${repository.id}`}
-            testID={`like-button-1`}
+            style={styles.addRepoButton}
+            onPress={() => handleAddRepository()}
           >
-            <Text style={styles.buttonText}>Curtir</Text>
+            <Text style={styles.buttonText}>Adicionar repositório</Text>
           </TouchableOpacity>
-        </View>
+        </>
       </SafeAreaView>
     </>
   );
@@ -61,7 +107,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#7159c1",
   },
   repositoryContainer: {
-    marginBottom: 15,
+    paddingBottom: 15,
     marginHorizontal: 15,
     backgroundColor: "#fff",
     padding: 20,
@@ -95,6 +141,10 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 10,
+  },
+  addRepoButton:{
+    alignContent: 'center',
+    alignItems: "center"
   },
   buttonText: {
     fontSize: 14,
